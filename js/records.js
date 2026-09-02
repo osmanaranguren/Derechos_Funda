@@ -206,7 +206,18 @@ class RecordsManager {
     if (!confirmed) return;
 
     try {
-      await window.SupabaseManager.deleteEvaluation(id);
+      const deleteResult = await window.SupabaseManager.deleteEvaluation(id);
+
+      if (deleteResult && !deleteResult.success && deleteResult.error) {
+        alert(
+          `⚠️ ATENCIÓN SUPABASE (RLS):\n\n` +
+          `El registro se eliminó de tu vista local, pero Supabase rechazó la eliminación en la nube.\n\n` +
+          `Error: ${deleteResult.error}\n\n` +
+          `Causa común: Falta la política DELETE en Supabase.\n` +
+          `Solución: En tu panel de Supabase > SQL Editor, ejecuta:\n\n` +
+          `CREATE POLICY "Permitir eliminacion anonima" ON public.evaluaciones_sena FOR DELETE TO anon, authenticated USING (true);`
+        );
+      }
 
       // Actualizar listas locales en memoria
       this.records = this.records.filter(r => String(r.id) !== String(id));
@@ -217,7 +228,11 @@ class RecordsManager {
       this.updateStats();
 
       if (window.app && window.app.showToast) {
-        window.app.showToast(`🗑️ Registro de ${cleanName} eliminado correctamente.`, 'info');
+        if (deleteResult && deleteResult.source === 'supabase' && deleteResult.success) {
+          window.app.showToast(`🗑️ Registro de ${cleanName} eliminado permanentemente de Supabase.`, 'success');
+        } else {
+          window.app.showToast(`🗑️ Registro de ${cleanName} eliminado localmente.`, 'info');
+        }
       }
       if (window.soundEngine) window.soundEngine.playClick();
     } catch (err) {
