@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SENA | Derechos Fundamentales en el Trabajo - Competencia 210201501</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            sena: {
+              green: '#39A900',
+              'green-dark': '#2d8200',
+              navy: '#00324D',
+              'navy-dark': '#001f30',
+              gold: '#F59E0B'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Supabase JS CDN (v2) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body
+  class="bg-slate-50 dark:bg-[#0b1120] text-slate-800 dark:text-slate-100 min-h-screen flex flex-col antialiased selection:bg-emerald-500 selection:text-white">
+
+  <!-- =========================================================
+       BARRA DE NAVEGACIÓN SUPERIOR (NAVBAR GLASSMORPHIC)
+       ========================================================= -->
+  <header class="sticky top-0 z-50 glass-nav transition-all duration-300">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16 gap-4">
+
+        <!-- Logo e Identidad SENA -->
+        <div class="flex items-center gap-3 cursor-pointer" onclick="window.app.navigateTo('home')">
+          <img src="sena-logo.png" alt="Logo SENA" class="w-10 h-10 object-contain bg-white dark:bg-slate-800 rounded-xl p-1 shadow-md shadow-emerald-500/10 border border-emerald-500/20">
+          <div>
+            <span class="text-base font-black tracking-tight text-slate-900 dark:text-white block leading-tight">
+              Derechos Fundamentales
+            </span>
+            <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+              COMPETENCIA 210201501
+            </span>
+          </div>
+        </div>
+
+        <!-- Menú de Navegación Principal -->
+        <nav class="hidden md:flex items-center gap-6 text-sm font-semibold text-slate-600 dark:text-slate-300">
+          <button onclick="window.app.navigateTo('home')" data-view="home"
+            class="nav-link hover:text-emerald-600 dark:hover:text-emerald-400 transition py-1">
+            Inicio
+          </button>
+          <button onclick="window.app.navigateTo('slides')" data-view="slides"
+            class="nav-link hover:text-emerald-600 dark:hover:text-emerald-400 transition py-1">
+            Diapositivas
+          </button>
+          <button onclick="window.app.navigateTo('videos')" data-view="videos"
+            class="nav-link hover:text-emerald-600 dark:hover:text-emerald-400 transition py-1 flex items-center gap-1.5">
+            <span>Videoteca</span>
+            <span id="nav-videos-badge" class="px-1.5 py-0.2 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-bold font-mono">0/2</span>
+          </button>
+          <button onclick="window.app.navigateTo('quiz')" data-view="quiz"
+            class="nav-link hover:text-emerald-600 dark:hover:text-emerald-400 transition py-1 flex items-center gap-1.5"
+            title="Evaluación Oficial">
+            <span id="nav-quiz-lock-icon">🔒</span>
+            <span>Evaluación</span>
+            <span id="nav-quiz-badge" class="px-1.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] font-bold">10 Q</span>
+          </button>
+          <button onclick="window.app.navigateTo('records')" data-view="records"
+            class="nav-link hover:text-emerald-600 dark:hover:text-emerald-400 transition py-1 flex items-center gap-1.5"
+            title="Acceso exclusivo Coordinadores y Administrador">
+            <span>🔒</span>
+            <span>Fichas & Resultados</span>
+          </button>
+        </nav>
+
+        <!-- Botones de Acción Rápida -->
+        <div class="flex items-center gap-2">
+          <!-- Botón Supabase con Estado en Vivo -->
+          <button id="navbar-supabase-status" onclick="window.app.openSupabaseModal()"
+            class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 transition border border-slate-200 dark:border-slate-700"
+            title="Configurar conexión con Supabase">
+            <span>⚡</span>
+            <span>Supabase</span>
+          </button>
+
+          <!-- Botón Tema Oscuro/Claro -->
+          <button onclick="window.app.toggleTheme()"
+            class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 flex items-center justify-center text-sm transition border border-slate-200 dark:border-slate-700"
+            title="Cambiar Tema">
+            <span id="theme-toggle-icon">☀️</span>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Menú Móvil -->
+      <div
+        class="flex md:hidden items-center justify-around py-2.5 border-t border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-600 dark:text-slate-400">
+        <button onclick="window.app.navigateTo('home')" class="hover:text-emerald-500">🏠 Inicio</button>
+        <button onclick="window.app.navigateTo('slides')" class="hover:text-emerald-500">📑 Temas</button>
+        <button onclick="window.app.navigateTo('videos')" class="hover:text-emerald-500">🎬 Videos</button>
+        <button onclick="window.app.navigateTo('quiz')" class="hover:text-emerald-500 flex items-center gap-1">
+          <span id="mobile-quiz-lock-icon">🔒</span> Quiz
+        </button>
+        <button onclick="window.app.navigateTo('records')" class="hover:text-emerald-500 flex items-center gap-0.5">🔒
+          Fichas</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- =========================================================
+       CONTENEDOR PRINCIPAL
+       ========================================================= -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- =======================================================
+         VISTA 1: INICIO (HOME DASHBOARD)
+         ======================================================= -->
+    <section id="view-home" class="space-y-12">
+
+      <!-- Hero Banner -->
+      <div
+        class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-900 via-[#00324D] to-slate-900 text-white p-8 md:p-14 shadow-2xl border border-emerald-500/20">
+
+        <!-- Elementos decorativos de fondo -->
+        <div class="absolute -right-20 -top-20 w-80 h-80 rounded-full bg-emerald-500/20 blur-3xl pointer-events-none">
+        </div>
+        <div class="absolute -left-20 -bottom-20 w-80 h-80 rounded-full bg-teal-500/20 blur-3xl pointer-events-none">
+        </div>
+
+        <div class="relative z-10 max-w-3xl">
+          <div
+            class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-black uppercase tracking-wider mb-6">
+            <span>🇨🇴</span> Programa de Formación Integral SENA
+          </div>
+
+          <h1 class="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight leading-tight mb-4">
+            Derechos Fundamentales en el Trabajo y Ciudadanía Laboral
+          </h1>
+
+          <p class="text-sm md:text-lg text-slate-200 font-normal leading-relaxed mb-8">
+            Plataforma pedagógica e interactiva para el estudio y evaluación de la competencia
+            <strong>210201501</strong>: <em>«Ejercer Derechos fundamentales en el marco de la Constitución política y
+              los convenios internacionales»</em>.
+          </p>
+
+          <div class="flex flex-wrap gap-4">
+            <button onclick="window.app.navigateTo('slides')"
+              class="px-6 py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-sm shadow-lg shadow-emerald-500/30 transition transform hover:-translate-y-0.5 flex items-center gap-2">
+              <span>📖 Estudiar Diapositivas</span>
+            </button>
+
+            <button onclick="window.app.navigateTo('videos')"
+              class="px-6 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm backdrop-blur-md border border-white/20 transition transform hover:-translate-y-0.5 flex items-center gap-2">
+              <span>🎬 Ver Videos Educativos</span>
+            </button>
+
+            <button id="hero-quiz-btn" onclick="window.app.navigateTo('quiz')"
+              class="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-sm shadow-lg shadow-amber-500/30 transition transform hover:-translate-y-0.5 flex items-center gap-2">
+              <span id="hero-quiz-icon">🔒</span>
+              <span id="hero-quiz-text">Presentar Evaluación Oficial</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tarjetas de Acceso a Módulos -->
+      <div>
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h2 class="text-2xl font-black text-slate-900 dark:text-white">Módulos de Aprendizaje</h2>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Selecciona el área que deseas explorar hoy</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+
+          <!-- Card 1: Diapositivas -->
+          <div onclick="window.app.navigateTo('slides')"
+            class="group cursor-pointer p-6 rounded-3xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 shadow-lg shadow-slate-200/50 dark:shadow-none hover:border-emerald-500 transition-all duration-300 transform hover:-translate-y-1">
+            <div
+              class="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition">
+              📑
+            </div>
+            <h3 class="font-bold text-slate-900 dark:text-white text-lg mb-2">Diapositivas y Teoría</h3>
+            <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
+              Marco normativo de 1948, las 3 generaciones de derechos y los Artículos 25 y 53 de la C.P.
+            </p>
+            <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+              Explorar diapositivas →
+            </span>
+          </div>
+
+          <!-- Card 2: Videos -->
+          <div onclick="window.app.navigateTo('videos')"
+            class="group cursor-pointer p-6 rounded-3xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 shadow-lg shadow-slate-200/50 dark:shadow-none hover:border-blue-500 transition-all duration-300 transform hover:-translate-y-1 relative">
+            <div id="module-videos-badge" class="absolute top-4 right-4 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700 font-mono">
+              0/2
+            </div>
+            <div
+              class="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition">
+              🎬
+            </div>
+            <h3 class="font-bold text-slate-900 dark:text-white text-lg mb-2">Videoteca Pedagógica</h3>
+            <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
+              Videos ilustrativos sobre características de los DDHH y Derecho Laboral en Colombia.
+            </p>
+            <span class="text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1">
+              Reproducir videos →
+            </span>
+          </div>
+
+          <!-- Card 3: Evaluación -->
+          <div id="card-quiz-module" onclick="window.app.navigateTo('quiz')"
+            class="group cursor-pointer p-6 rounded-3xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 shadow-lg shadow-slate-200/50 dark:shadow-none hover:border-amber-500 transition-all duration-300 transform hover:-translate-y-1 relative">
+            <div id="module-quiz-badge" class="absolute top-4 right-4 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700 flex items-center gap-1">
+              <span>🔒</span> <span>Bloqueado</span>
+            </div>
+            <div
+              class="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition">
+              🎯
+            </div>
+            <h3 class="font-bold text-slate-900 dark:text-white text-lg mb-2">Evaluación Oficial</h3>
+            <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
+              Cuestionario de 10 preguntas de opción múltiple con calificación automática y justificaciones.
+            </p>
+            <span id="module-quiz-footer-text" class="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+              <span>🔒</span> <span>Requiere ver videos →</span>
+            </span>
+          </div>
+
+          <!-- Card 4: Fichas & Resultados -->
+          <div onclick="window.app.navigateTo('records')"
+            class="group cursor-pointer p-6 rounded-3xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 shadow-lg shadow-slate-200/50 dark:shadow-none hover:border-purple-500 transition-all duration-300 transform hover:-translate-y-1">
+            <div
+              class="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition">
+              📊
+            </div>
+            <h3 class="font-bold text-slate-900 dark:text-white text-lg mb-2">Fichas & Certificados</h3>
+            <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
+              Gestor de notas guardadas en Supabase/Local, exportación a Excel y constancias de aprobación.
+            </p>
+            <span class="text-xs font-bold text-purple-600 dark:text-purple-400 flex items-center gap-1">
+              Ver registros →
+            </span>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Resultados de Aprendizaje (RAPs) -->
+      <div>
+        <div class="mb-6">
+          <h2 class="text-2xl font-black text-slate-900 dark:text-white">Resultados de Aprendizaje (RAPs)</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Competencias que desarrollará el aprendiz en esta unidad
+          </p>
+        </div>
+
+        <div id="home-raps-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <!-- Inyectado dinámicamente por app.js -->
+        </div>
+      </div>
+
+    </section>
+
+    <!-- =======================================================
+         VISTA 2: DIAPOSITIVAS INTERACTIVAS (SLIDES)
+         ======================================================= -->
+    <section id="view-slides" class="hidden space-y-6">
+
+      <!-- Controles de la Diapositiva -->
+      <div
+        class="flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+        <div>
+          <span id="slide-indicator" class="font-bold text-sm text-emerald-600 dark:text-emerald-400">
+            Diapositiva 1 de 6
+          </span>
+          <p class="text-xs text-slate-400">Usa las flechas del teclado (← / →) para navegar</p>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button onclick="window.app.prevSlide()"
+            class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 font-bold text-sm transition">
+            ← Anterior
+          </button>
+          <button onclick="window.app.nextSlide()"
+            class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition shadow">
+            Siguiente →
+          </button>
+        </div>
+      </div>
+
+      <!-- Visor de la Diapositiva Actual -->
+      <div
+        class="p-6 md:p-10 rounded-3xl bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 shadow-xl min-h-[480px] flex flex-col justify-between">
+        <div id="slide-viewport">
+          <!-- Inyectado dinámicamente -->
+        </div>
+
+        <!-- Indicador de Puntos -->
+        <div id="slide-dots"
+          class="flex items-center justify-center gap-2 pt-6 border-t border-slate-100 dark:border-slate-700/60 mt-8">
+          <!-- Inyectado dinámicamente -->
+        </div>
+      </div>
+
+    </section>
+
+    <!-- =======================================================
+         VISTA 3: VIDEOTECA EDUCATIVA
+         ======================================================= -->
+    <section id="view-videos" class="hidden space-y-8">
+
+      <!-- Banner de Progreso de la Videoteca y Desbloqueo de Evaluación -->
+      <div class="p-6 rounded-3xl bg-gradient-to-r from-slate-900 via-[#00324D] to-slate-900 border border-slate-800 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
+        <div class="space-y-1.5 text-center md:text-left">
+          <div class="flex items-center justify-center md:justify-start gap-2">
+            <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold font-mono">
+              REQUISITO PEDAGÓGICO
+            </span>
+            <span id="videoteca-badge-status" class="text-xs font-semibold text-slate-300">
+              🔒 0 de 2 Videos Vistos
+            </span>
+          </div>
+          <h2 class="text-lg md:text-xl font-black">Ruta Audiovisual Requerida</h2>
+          <p class="text-xs text-slate-300 max-w-xl">
+            Visualiza los 2 videos pedagógicos para habilitar automáticamente el cuestionario de evaluación oficial de la competencia.
+          </p>
+        </div>
+
+        <div class="w-full md:w-auto flex flex-col sm:flex-row items-center gap-4">
+          <!-- Barra de Progreso -->
+          <div class="w-full sm:w-44 space-y-1.5 text-center sm:text-right">
+            <div class="flex justify-between text-xs font-bold">
+              <span class="text-slate-400">Progreso</span>
+              <span id="videoteca-progress-text" class="text-emerald-400 font-mono">0%</span>
+            </div>
+            <div class="w-full h-3 rounded-full bg-slate-800 overflow-hidden p-0.5 border border-slate-700">
+              <div id="videoteca-progress-fill" class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <!-- Botón CTA a Evaluación -->
+          <button id="videoteca-quiz-cta-btn" onclick="window.app.navigateTo('quiz')"
+            class="w-full sm:w-auto px-5 py-3 rounded-2xl font-black text-xs transition flex items-center justify-center gap-2 bg-slate-800 text-slate-400 border border-slate-700 cursor-not-allowed">
+            <span>🔒 Evaluación Bloqueada</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+        <!-- Reproductor Principal de Video -->
+        <div class="lg:col-span-2 space-y-4">
+          <div class="overflow-hidden rounded-3xl bg-black border border-slate-800 shadow-2xl relative">
+            <video id="main-video-element" controls class="w-full aspect-video bg-black" preload="metadata">
+              Tu navegador no soporta el reproductor de video HTML5.
+            </video>
+            <!-- Badge flotante de estado sobre el video -->
+            <div id="video-player-watched-badge" class="hidden absolute top-3 right-3 px-3 py-1 rounded-full bg-emerald-500/90 text-white text-xs font-bold shadow-lg backdrop-blur-md flex items-center gap-1.5 border border-emerald-400/40">
+              <span>✅</span> <span>¡Video Completado!</span>
+            </div>
+          </div>
+
+          <!-- Controles de Velocidad y Detalles -->
+          <div
+            class="p-6 rounded-3xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h3 id="active-video-title" class="text-xl font-bold text-slate-900 dark:text-white">
+                  Título del Video
+                </h3>
+                <p id="active-video-desc" class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Descripción pedagógica
+                </p>
+              </div>
+
+              <!-- Selector de Velocidad -->
+              <div class="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-700 text-xs font-bold">
+                <button onclick="window.app.setVideoSpeed(0.75)"
+                  class="px-2.5 py-1 rounded-lg hover:bg-white dark:hover:bg-slate-600 transition">0.75x</button>
+                <button onclick="window.app.setVideoSpeed(1.0)"
+                  class="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-600 shadow-sm">1.0x</button>
+                <button onclick="window.app.setVideoSpeed(1.25)"
+                  class="px-2.5 py-1 rounded-lg hover:bg-white dark:hover:bg-slate-600 transition">1.25x</button>
+                <button onclick="window.app.setVideoSpeed(1.5)"
+                  class="px-2.5 py-1 rounded-lg hover:bg-white dark:hover:bg-slate-600 transition">1.5x</button>
+              </div>
+            </div>
+
+            <!-- Temas clave del video -->
+            <div class="pt-4 border-t border-slate-100 dark:border-slate-700">
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-2">Temas clave
+                explicados:</span>
+              <ul id="active-video-topics" class="space-y-1.5">
+                <!-- Inyectado dinámicamente -->
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lista de Videos Disponibles -->
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-lg text-slate-900 dark:text-white">Lista de Reproducción</h3>
+            <div class="flex items-center gap-2">
+              <span id="videoteca-playlist-counter" class="text-xs text-emerald-600 dark:text-emerald-400 font-bold font-mono">0/2 Vistos</span>
+              <button onclick="window.app.resetVideoProgress()" title="Reiniciar progreso para pruebas pedagógicas" class="text-[11px] text-slate-400 hover:text-red-500 transition underline">
+                Reiniciar
+              </button>
+            </div>
+          </div>
+
+          <div id="video-selection-list" class="space-y-3">
+            <!-- Inyectado dinámicamente -->
+          </div>
+
+          <!-- Cuadro de Notas Rápidas para el Aprendiz -->
+          <div
+            class="p-5 rounded-3xl bg-slate-100/80 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-xs">
+            <h4 class="font-bold text-slate-800 dark:text-slate-200 mb-2 flex items-center gap-1.5">
+              <span>📝</span> Bloc de Notas del Aprendiz
+            </h4>
+            <textarea id="apprentice-video-notes" rows="4"
+              placeholder="Toma tus apuntes aquí mientras observas el video..."
+              class="w-full p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- =======================================================
+         VISTA 4: EVALUACIÓN INTERACTIVA (QUIZ)
+         ======================================================= -->
+    <section id="view-quiz" class="hidden max-w-4xl mx-auto space-y-6">
+
+      <!-- Paso 1: Formulario de Identificación del Aprendiz -->
+      <div id="quiz-setup-view"
+        class="p-8 md:p-12 rounded-3xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl text-center">
+        
+        <div class="w-20 h-20 rounded-2xl bg-emerald-500/10 dark:bg-emerald-950/40 p-2 mx-auto mb-4 border border-emerald-500/20 flex items-center justify-center shadow-inner">
+          <img src="sena-logo.png" alt="Logo SENA" class="w-14 h-14 object-contain">
+        </div>
+
+        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 text-xs font-bold mb-3">
+          <span>⚡ 2 Intentos Permitidos</span> • <span>Mínimo 70% para Aprobar y Certificar</span>
+        </div>
+
+        <h2 class="text-2xl md:text-3xl font-black text-slate-900 dark:text-white mb-2">
+          Evaluación de Conocimientos: Derechos Humanos y Laborales
+        </h2>
+        <p class="text-xs md:text-sm text-slate-500 dark:text-slate-400 max-w-xl mx-auto mb-8">
+          Cuestionario oficial de 10 preguntas correspondiente a la competencia SENA <strong>210201501</strong>. Tienes hasta <strong>dos (2) oportunidades</strong> para presentar y aprobar la prueba.
+        </p>
+
+        <div id="quiz-setup-error"
+          class="hidden max-w-md mx-auto p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-bold mb-4">
+        </div>
+
+        <div class="max-w-md mx-auto space-y-4 text-left mb-8"
+          onkeydown="if(event.key === 'Enter') document.getElementById('btn-start-quiz').click()">
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">Nombre Completo del
+              Aprendiz *</label>
+            <input type="text" id="quiz-input-name" placeholder="Ej: Juan Pérez Morales"
+              class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm font-semibold">
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">No. Ficha SENA
+                *</label>
+              <input type="text" id="quiz-input-ficha" placeholder="Ej: 2825641"
+                class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm font-semibold font-mono">
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">No. Documento / Cédula
+                *</label>
+              <input type="text" id="quiz-input-doc" placeholder="Ej: 1020304050"
+                class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm font-semibold font-mono">
+            </div>
+          </div>
+        </div>
+
+        <button id="btn-start-quiz" type="button" onclick="window.quizEngine.startQuiz()"
+          class="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm shadow-xl shadow-emerald-600/30 transition transform hover:-translate-y-0.5 inline-flex items-center gap-2 cursor-pointer">
+          <span>🚀 Iniciar Cuestionario Oficial</span>
+        </button>
+      </div>
+
+      <!-- Paso 2: Cuestionario en Ejecución -->
+      <div id="quiz-running-view" class="hidden space-y-6">
+
+        <!-- Barra de Progreso y Temporizador -->
+        <div
+          class="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-wrap items-center justify-between gap-4">
+          <div class="flex-1 min-w-[200px]">
+            <div class="flex justify-between text-xs font-bold mb-1.5">
+              <span id="quiz-progress-text" class="text-slate-700 dark:text-slate-200">0 de 10 Respondidas (0%)</span>
+              <span class="text-emerald-600 dark:text-emerald-400 font-mono" id="quiz-timer-display">⏱ 00:00</span>
+            </div>
+            <div class="w-full h-2.5 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
+              <div id="quiz-progress-bar"
+                class="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-300"
+                style="width: 0%"></div>
+            </div>
+          </div>
+
+          <!-- Cuadrícula de salto de preguntas -->
+          <div id="quiz-nav-grid" class="flex flex-wrap items-center gap-1.5">
+            <!-- Inyectado dinámicamente -->
+          </div>
+        </div>
+
+        <!-- Tarjeta de la Pregunta -->
+        <div id="quiz-question-card"
+          class="p-6 md:p-10 rounded-3xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl">
+          <!-- Inyectado dinámicamente -->
+        </div>
+
+      </div>
+
+      <!-- Paso 3: Resultados y Justificaciones -->
+      <div id="quiz-results-view"
+        class="hidden p-6 md:p-10 rounded-3xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xl">
+        <div id="quiz-result-summary-card">
+          <!-- Inyectado dinámicamente -->
+        </div>
+      </div>
+
+    </section>
+
+    <!-- =======================================================
+         VISTA 5: REGISTROS DE EVALUACIONES POR FICHA
+         ======================================================= -->
+    <section id="view-records" class="hidden space-y-8">
+
+      <!-- Encabezado y Estadísticas -->
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 class="text-2xl font-black text-slate-900 dark:text-white">Panel de Fichas y Calificaciones</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Historial completo de aprendices evaluados en Supabase y
+            almacenamiento local</p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Insignia de Sesión Activa (Coordinador / Admin) -->
+          <div id="records-auth-status-badge" class="hidden flex items-center gap-2"></div>
+
+          <span id="records-source-badge"
+            class="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 flex items-center gap-1">
+            🟢 Sincronizado
+          </span>
+          <button onclick="window.recordsManager.loadRecords()"
+            class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 transition border border-slate-200 dark:border-slate-700"
+            title="Refrescar lista">
+            🔄 Actualizar
+          </button>
+        </div>
+      </div>
+
+      <!-- Widgets de Métricas Rápidas -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+          <span class="text-xs font-bold text-slate-400 uppercase">Evaluaciones</span>
+          <p id="stat-total-evaluaciones" class="text-3xl font-black text-slate-900 dark:text-white mt-1">0</p>
+        </div>
+
+        <div class="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+          <span class="text-xs font-bold text-slate-400 uppercase">Aprobados</span>
+          <p id="stat-total-aprobados" class="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-1">0</p>
+        </div>
+
+        <div class="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+          <span class="text-xs font-bold text-slate-400 uppercase">Promedio</span>
+          <p id="stat-promedio-porcentaje" class="text-3xl font-black text-blue-600 dark:text-blue-400 mt-1">0%</p>
+        </div>
+
+        <div class="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+          <span class="text-xs font-bold text-slate-400 uppercase">Tasa Aprobación</span>
+          <p id="stat-tasa-aprobacion" class="text-3xl font-black text-purple-600 dark:text-purple-400 mt-1">0%</p>
+        </div>
+      </div>
+
+      <!-- Barra de Filtros y Búsqueda -->
+      <div
+        class="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-wrap items-center justify-between gap-4">
+
+        <div class="flex flex-wrap items-center gap-3 flex-1 min-w-[280px]">
+          <!-- Selector de Ficha -->
+          <select id="records-filter-ficha" onchange="window.recordsManager.setFichaFilter(this.value)"
+            class="px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-white focus:outline-none">
+            <option value="ALL">Todas las Fichas</option>
+          </select>
+
+          <!-- Input de Búsqueda -->
+          <input type="text" id="records-search-input" oninput="window.recordsManager.setSearchFilter(this.value)"
+            placeholder="Buscar por nombre, documento o ficha..."
+            class="px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-white focus:outline-none w-64">
+        </div>
+
+        <!-- Botones de Exportación -->
+        <div class="flex items-center gap-2">
+          <button onclick="window.recordsManager.exportToCSV()"
+            class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow transition">
+            <span>📥</span> Exportar Excel (CSV)
+          </button>
+          <button onclick="window.recordsManager.exportToJSON()"
+            class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 transition">
+            JSON
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Tabla de Calificaciones -->
+      <div
+        class="overflow-x-auto rounded-3xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr
+              class="border-b border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/50 text-[11px] font-black uppercase text-slate-400 tracking-wider">
+              <th class="py-3.5 px-4">#</th>
+              <th class="py-3.5 px-4">Aprendiz</th>
+              <th class="py-3.5 px-4">No. Ficha</th>
+              <th class="py-3.5 px-4 text-center">Intento</th>
+              <th class="py-3.5 px-4 text-center">Puntaje</th>
+              <th class="py-3.5 px-4 text-center">Estado</th>
+              <th class="py-3.5 px-4">Fecha / Tiempo</th>
+              <th class="py-3.5 px-4 text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="records-table-body">
+            <!-- Inyectado dinámicamente -->
+          </tbody>
+        </table>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- =========================================================
+       MODAL DE CONSTANCIA / CERTIFICADO IMPRIMIBLE
+       ========================================================= -->
+  <div id="certificate-modal"
+    class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-sm p-4 flex items-center justify-center">
+    <div class="relative w-full max-w-3xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-6 space-y-6">
+
+      <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+        <h3 class="font-black text-lg text-slate-900 dark:text-white flex items-center gap-2">
+          <span>📜</span> Constancia de Curso SENA
+        </h3>
+        <button onclick="window.recordsManager.closeCertificate()"
+          class="text-slate-400 hover:text-slate-600 text-xl font-bold">
+          ✕
+        </button>
+      </div>
+
+      <div id="certificate-content">
+        <!-- Inyectado dinámicamente -->
+      </div>
+
+      <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800 no-print">
+        <button onclick="window.recordsManager.closeCertificate()"
+          class="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-100">
+          Cerrar
+        </button>
+        <button onclick="window.recordsManager.printCertificate()"
+          class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow flex items-center gap-1.5">
+          <span>🖨️</span> Imprimir / Guardar PDF
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- =========================================================
+       MODAL DE CONFIGURACIÓN DE SUPABASE
+       ========================================================= -->
+  <div id="supabase-modal"
+    class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-sm p-4 flex items-center justify-center">
+    <div
+      class="relative w-full max-w-lg bg-white dark:bg-slate-800 rounded-3xl shadow-2xl p-6 space-y-5 border border-slate-200 dark:border-slate-700">
+
+      <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-4">
+        <div class="flex items-center gap-2">
+          <span class="text-2xl">⚡</span>
+          <h3 class="font-black text-lg text-slate-900 dark:text-white">
+            Conexión con Supabase
+          </h3>
+        </div>
+        <button onclick="window.app.closeSupabaseModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">
+          ✕
+        </button>
+      </div>
+
+      <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+        Ingresa la <strong>URL del Proyecto</strong> y la clave <strong>anon (public key)</strong> de tu proyecto
+        Supabase para sincronizar automáticamente las calificaciones en la nube.
+      </p>
+
+      <div class="space-y-3 text-left">
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">Project URL</label>
+          <input type="text" id="supabase-url-input" placeholder="https://xyzcompany.supabase.co"
+            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs font-mono">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">Anon Public
+            Key</label>
+          <input type="password" id="supabase-key-input" placeholder="eyJhbGciOiJIUzI1NiIsIn..."
+            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs font-mono">
+        </div>
+
+        <div id="supabase-test-status" class="text-xs font-semibold py-1"></div>
+      </div>
+
+      <!-- Helper SQL -->
+      <div
+        class="p-3.5 rounded-xl bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700 text-xs">
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="font-bold text-slate-700 dark:text-slate-300">¿Primera vez con Supabase?</span>
+          <button onclick="window.app.copySupabaseSql()"
+            class="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">
+            Copiar SQL Tabla 📋
+          </button>
+        </div>
+        <p class="text-[11px] text-slate-500">
+          Copia el script SQL para crear la tabla <code
+            class="font-mono bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded">evaluaciones_sena</code> y sus
+          políticas de acceso con 1 clic.
+        </p>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+        <button onclick="window.app.closeSupabaseModal()"
+          class="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-100">
+          Cancelar
+        </button>
+        <button onclick="window.app.saveSupabaseConfig()"
+          class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow">
+          Guardar y Probar Conexión
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- =========================================================
+       MODAL DE AUTENTICACIÓN OTP (4 DÍGITOS) - COORDINADOR & ADMIN
+       ========================================================= -->
+  <div id="otp-auth-modal"
+    class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-md p-4 items-center justify-center">
+    <div
+      class="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-6 sm:p-8 space-y-6 border border-slate-200 dark:border-slate-800 animate-fadeIn">
+
+      <!-- Botón Cerrar -->
+      <button onclick="window.authManager.closeAuthModal()"
+        class="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center justify-center font-bold text-sm transition">
+        ✕
+      </button>
+
+      <!-- Encabezado de Seguridad -->
+      <div class="text-center space-y-2">
+        <div
+          class="w-16 h-16 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-3xl mx-auto shadow-inner border border-emerald-500/20">
+          🔒
+        </div>
+        <h3 class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+          Acceso Restringido
+        </h3>
+        <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-xs mx-auto">
+          Módulo exclusivo para <strong>Coordinadores</strong> y <strong>Administradores</strong>. Ingresa el código PIN
+          / OTP de 4 dígitos.
+        </p>
+      </div>
+
+      <!-- Contenedor de Inputs OTP de 4 dígitos -->
+      <div id="otp-inputs-container" class="flex justify-center items-center gap-3 sm:gap-4 py-2">
+        <input type="password" id="otp-digit-1" maxlength="1" inputmode="numeric" pattern="[0-9]*"
+          autocomplete="one-time-code"
+          class="otp-box bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:border-emerald-500 dark:focus:border-emerald-400 focus:outline-none focus:ring-4 focus:ring-emerald-500/20 font-mono shadow-sm">
+        <input type="password" id="otp-digit-2" maxlength="1" inputmode="numeric" pattern="[0-9]*"
+          class="otp-box bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:border-emerald-500 dark:focus:border-emerald-400 focus:outline-none focus:ring-4 focus:ring-emerald-500/20 font-mono shadow-sm">
+        <input type="password" id="otp-digit-3" maxlength="1" inputmode="numeric" pattern="[0-9]*"
+          class="otp-box bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:border-emerald-500 dark:focus:border-emerald-400 focus:outline-none focus:ring-4 focus:ring-emerald-500/20 font-mono shadow-sm">
+        <input type="password" id="otp-digit-4" maxlength="1" inputmode="numeric" pattern="[0-9]*"
+          class="otp-box bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:border-emerald-500 dark:focus:border-emerald-400 focus:outline-none focus:ring-4 focus:ring-emerald-500/20 font-mono shadow-sm">
+      </div>
+
+      <!-- Mensaje de Error / Éxito -->
+      <div id="otp-error-msg" class="hidden text-xs text-center py-1 font-semibold"></div>
+
+      <!-- Teclado Numérico Interactivo Seguro (Sin revelar claves) -->
+      <div class="grid grid-cols-3 gap-2 max-w-[260px] mx-auto pt-1">
+        <button type="button" onclick="window.authManager.appendDigit(1)"
+          class="h-11 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:border-emerald-500 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white font-bold text-base transition active:scale-95 shadow-sm">1</button>
+        <button type="button" onclick="window.authManager.appendDigit(2)"
+          class="h-11 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:border-emerald-500 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white font-bold text-base transition active:scale-95 shadow-sm">2</button>
+        <button type="button" onclick="window.authManager.appendDigit(3)"
+          class="h-11 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:border-emerald-500 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white font-bold text-base transition active:scale-95 shadow-sm">3</button>
+        <button type="button" onclick="window.authManager.appendDigit(4)"
+          class="h-11 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:border-emerald-500 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white font-bold text-base transition active:scale-95 shadow-sm">4</button>
+        <button type="button" onclick="window.authManager.appendDigit(5)"
+          class="h-11 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:border-emerald-500 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white font-bold text-base transition active:scale-95 shadow-sm">5</button>
+        <button type="button" onclick="window.authManager.appendDigit(6)"
+          class="h-11 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:border-emerald-500 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white font-bold text-base transition active:scale-95 shadow-sm">6</button>
+        <button type="button" onclick="window.authManager.appendDigit(7)"
+          class="h-11 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:border-emerald-500 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white font-bold text-base transition active:scale-95 shadow-sm">7</button>
+        <button type="button" onclick="window.authManager.appendDigit(8)"
+          class="h-11 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:border-emerald-500 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white font-bold text-base transition active:scale-95 shadow-sm">8</button>
+        <button type="button" onclick="window.authManager.appendDigit(9)"
+          class="h-11 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:border-emerald-500 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white font-bold text-base transition active:scale-95 shadow-sm">9</button>
+        <button type="button" onclick="window.authManager.resetOtpInputs()"
+          class="h-11 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-950/40 hover:border-red-400 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold text-xs transition active:scale-95"
+          title="Borrar todo">C</button>
+        <button type="button" onclick="window.authManager.appendDigit(0)"
+          class="h-11 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:border-emerald-500 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white font-bold text-base transition active:scale-95 shadow-sm">0</button>
+        <button type="button" onclick="window.authManager.deleteDigit()"
+          class="h-11 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:border-amber-400 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold text-base transition active:scale-95"
+          title="Borrar último">⌫</button>
+      </div>
+
+      <!-- Nota de Seguridad Institucional -->
+      <div
+        class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 text-center">
+        <p class="text-[11px] text-slate-500 dark:text-slate-400">
+          🔒 <strong class="text-slate-700 dark:text-slate-300">Confidencialidad:</strong> El PIN de 4 dígitos es
+          exclusivo para instructores directivos, coordinadores y el administrador.
+        </p>
+      </div>
+
+      <!-- Botones de Acción -->
+      <div class="flex items-center justify-end gap-3 pt-2">
+        <button type="button" onclick="window.authManager.closeAuthModal()"
+          class="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+          Cancelar
+        </button>
+        <button type="button" onclick="window.authManager.verifyOtp()"
+          class="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 transition flex items-center gap-1.5">
+          <span>🔓</span> Verificar y Entrar
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- =========================================================
+       MODAL PEDAGÓGICO: VIDEOS OBLIGATORIOS ANTES DE EVALUACIÓN
+       ========================================================= -->
+  <div id="video-required-modal"
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm hidden animate-fadeIn">
+    <div
+      class="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 sm:p-8 space-y-6 transform transition-all text-center">
+      
+      <div class="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-3xl mx-auto border border-amber-500/20 animate-bounce">
+        🔒
+      </div>
+
+      <div class="space-y-2">
+        <h3 class="text-xl font-black text-slate-900 dark:text-white">
+          Evaluación Bloqueada
+        </h3>
+        <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+          Para garantizar la apropiación de conocimientos de la competencia <strong>210201501</strong>, debes visualizar los <strong>2 videos pedagógicos</strong> de la Videoteca antes de presentar el cuestionario evaluativo.
+        </p>
+      </div>
+
+      <!-- Lista de estado de los videos -->
+      <div id="video-requirement-status-list" class="space-y-2.5 text-left bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/60 text-xs">
+        <!-- Inyectado dinámicamente -->
+      </div>
+
+      <!-- Botones de Acción -->
+      <div class="space-y-2 pt-2">
+        <button onclick="window.app.goToUnwatchedVideo()"
+          class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs shadow-lg shadow-emerald-600/30 transition flex items-center justify-center gap-2">
+          <span>🎬 Ir a la Videoteca a Estudiar</span>
+        </button>
+        <div class="flex items-center justify-between gap-2 pt-1">
+          <button onclick="window.app.closeVideoRequiredModal()"
+            class="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+            Volver
+          </button>
+          <button onclick="window.app.bypassVideoLock()"
+            title="Habilitar para fines docentes o demostrativos"
+            class="py-2.5 px-3 rounded-xl text-[11px] text-slate-400 hover:text-emerald-500 transition">
+            🔓 Desbloqueo Rápido
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Contenedor de Toast Flotantes -->
+  <div id="app-toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
+
+  <!-- =========================================================
+       FOOTER
+       ========================================================= -->
+  <footer
+    class="mt-auto border-t border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 py-6 text-center text-xs text-slate-500 dark:text-slate-400">
+    <div class="max-w-7xl mx-auto px-4 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-2">
+        <span class="font-black text-emerald-600">SENA</span>
+        <span>• Formación Profesional Integral</span>
+      </div>
+      <p>OSAN ADSO 2026</p>
+      <div class="text-[11px] font-mono text-slate-400">
+        Versión 2.0 • 2026
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts del Proyecto con Cache Busting -->
+  <script src="js/data.js?v=4.0"></script>
+  <script src="js/audio.js?v=4.0"></script>
+  <script src="js/confetti.js?v=4.0"></script>
+  <script src="js/auth.js?v=4.0"></script>
+  <script src="js/supabase-credentials.js?v=4.0"></script>
+  <script src="js/supabase-config.js?v=4.0"></script>
+  <script src="js/quiz.js?v=4.0"></script>
+  <script src="js/records.js?v=4.0"></script>
+  <script src="js/app.js?v=4.0"></script>
+</body>
+
+</html>
