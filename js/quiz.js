@@ -168,9 +168,110 @@ class QuizEngine {
     return this.questions;
   }
 
+  normalizeDoc(doc) {
+    return String(doc || '').replace(/[\s.\-_,]/g, '').trim();
+  }
+
+  normalizeText(txt) {
+    return String(txt || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
   init() {
     this.getQuestionsList();
     this.reset();
+    this.setupRealtimeCheck();
+  }
+
+  setupRealtimeCheck() {
+    const docInput = document.getElementById('quiz-input-doc');
+    const nameInput = document.getElementById('quiz-input-name');
+    const fichaInput = document.getElementById('quiz-input-ficha');
+    const errorEl = document.getElementById('quiz-setup-error');
+    const startBtn = document.getElementById('btn-start-quiz');
+
+    let debounceTimer = null;
+
+    const checkOnChange = async () => {
+      const doc = docInput ? docInput.value.trim() : '';
+      const name = nameInput ? nameInput.value.trim() : '';
+      const ficha = fichaInput ? fichaInput.value.trim() : '';
+      const cleanDoc = this.normalizeDoc(doc);
+
+      if (cleanDoc && cleanDoc.length >= 4) {
+        const status = await this.checkApprenticeStatus(doc, name, ficha);
+        
+        if (status.attemptsCount > 0) {
+          const lastRec = status.previousRecords[0] || status.passedRecord;
+          const isPassed = status.hasPassed;
+
+          if (errorEl) {
+            errorEl.innerHTML = `
+              <div class="p-4 rounded-2xl ${
+                isPassed 
+                  ? 'bg-emerald-500/10 border-2 border-emerald-500/40 text-emerald-900 dark:text-emerald-200' 
+                  : 'bg-amber-500/10 border-2 border-amber-500/40 text-amber-900 dark:text-amber-200'
+              } text-left animate-fadeIn shadow-sm">
+                <div class="flex items-center gap-2.5 mb-2">
+                  <span class="text-2xl">${isPassed ? '🎓' : '⚠️'}</span>
+                  <div>
+                    <h4 class="font-black text-sm text-slate-900 dark:text-white">Ya presentaste la prueba</h4>
+                    <p class="text-xs opacity-90">El documento <strong>${doc}</strong> ya cuenta con una evaluación registrada en el sistema (${lastRec ? (lastRec.fecha || 'Previa') : ''}).</p>
+                  </div>
+                </div>
+                <p class="text-xs mb-3 leading-relaxed">
+                  ${isPassed 
+                    ? `Resultado: <strong class="text-emerald-600 dark:text-emerald-400">APROBADO con ${status.bestScore}%</strong>. Tu certificación oficial está disponible.`
+                    : `Resultado: <strong>Calificación obtenida: ${lastRec ? lastRec.porcentaje : 0}%</strong>.`}
+                </p>
+                <div class="flex flex-wrap items-center gap-2">
+                  ${isPassed ? `
+                    <button type="button" onclick="window.recordsManager.showCertificate(window.quizEngine.lastPassedRecord || ${JSON.stringify(status.passedRecord).replace(/"/g, '&quot;')})" class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow flex items-center gap-1.5 cursor-pointer">
+                      <span>📜</span> Ver Mi Certificado SENA
+                    </button>
+                  ` : ''}
+                  <button type="button" onclick="window.app.navigateTo('slides')" class="px-3.5 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition">
+                    <span>📖</span> Ver Material de Estudio
+                  </button>
+                </div>
+              </div>
+            `;
+            errorEl.classList.remove('hidden');
+          }
+
+          if (startBtn) {
+            startBtn.disabled = true;
+            startBtn.classList.add('opacity-50', 'cursor-not-allowed', 'grayscale');
+            startBtn.innerHTML = '<span>🔒 Ya Presentaste la Prueba</span>';
+          }
+          return;
+        }
+      }
+
+      // Si no hay registro previo para este documento
+      if (errorEl && errorEl.innerHTML.includes('Ya presentaste la prueba')) {
+        errorEl.classList.add('hidden');
+        errorEl.innerHTML = '';
+      }
+      if (startBtn && startBtn.disabled) {
+        startBtn.disabled = false;
+        startBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'grayscale');
+        startBtn.innerHTML = '<span>🚀 Iniciar Cuestionario Oficial</span>';
+      }
+    };
+
+    if (docInput) {
+      docInput.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(checkOnChange, 300);
+      });
+      docInput.addEventListener('blur', checkOnChange);
+      docInput.addEventListener('change', checkOnChange);
+    }
   }
 
   reset() {
@@ -184,9 +285,9 @@ class QuizEngine {
 
   // Obtener historial de intentos del aprendiz
   async getApprenticeAttempts(documento, nombre, ficha) {
-    const cleanDoc = (documento || '').trim();
-    const cleanName = (nombre || '').trim().toLowerCase();
-    const cleanFicha = (ficha || '').trim();
+    const cleanDoc = this.normalizeDoc(documento);
+    const cleanName = this.normalizeText(nombre);
+    const cleanFicha = String(ficha || '').trim();
 
     let allRecords = [];
     if (window.recordsManager && Array.isArray(window.recordsManager.records) && window.recordsManager.records.length > 0) {
@@ -194,16 +295,20 @@ class QuizEngine {
     } else if (window.SupabaseManager) {
       const res = await window.SupabaseManager.fetchEvaluations();
       allRecords = (res && res.records) || [];
+      if (window.recordsManager) {
+        window.recordsManager.records = allRecords;
+      }
     }
 
     return allRecords.filter(r => {
-      const rDoc = (r.documento || '').trim();
-      const rName = (r.nombre || '').trim().toLowerCase();
+      const rDoc = this.normalizeDoc(r.documento);
+      const rName = this.normalizeText(r.nombre);
       const rFicha = String(r.ficha || '').trim();
 
-      // Coincidencia por documento o por (nombre + ficha)
-      if (cleanDoc && rDoc && cleanDoc === rDoc) return true;
-      if (cleanName && cleanFicha && cleanName === rName && cleanFicha === rFicha) return true;
+      // Coincidencia por documento si tiene al menos 4 dígitos
+      if (cleanDoc && rDoc && cleanDoc.length >= 4 && cleanDoc === rDoc) return true;
+      // Coincidencia por (nombre + ficha)
+      if (cleanName && cleanFicha && cleanName.length >= 4 && cleanName === rName && cleanFicha === rFicha) return true;
       return false;
     });
   }
@@ -221,7 +326,7 @@ class QuizEngine {
       hasPassed: hasPassed,
       passedRecord: passedRecord,
       bestScore: bestScore,
-      canAttempt: count < 2,
+      canAttempt: !hasPassed && count < 2,
       nextAttemptNumber: count + 1
     };
   }
@@ -241,6 +346,7 @@ class QuizEngine {
     }
 
     const errorEl = document.getElementById('quiz-setup-error');
+    const startBtn = document.getElementById('btn-start-quiz');
 
     if (!nombre || !nombre.trim()) {
       if (errorEl) {
@@ -278,31 +384,53 @@ class QuizEngine {
       return false;
     }
 
-    // Comprobación de las dos (2) oportunidades permitidas
+    // Comprobación de estado previo del aprendiz (Bloqueo si ya presentó la prueba)
     const status = await this.checkApprenticeStatus(documento, nombre, ficha);
 
-    if (status.attemptsCount >= 2) {
+    if (status.attemptsCount > 0) {
+      const lastRec = status.previousRecords[0] || status.passedRecord;
+      const isPassed = status.hasPassed;
+
       if (errorEl) {
-        if (status.hasPassed) {
-          errorEl.innerHTML = `
-            <div class="p-3 text-left">
-              <p class="font-bold text-emerald-700 dark:text-emerald-300 mb-2">🎉 Ya has completado tus 2 intentos y tu evaluación está APROBADA con ${status.bestScore}%.</p>
-              <button type="button" onclick="window.recordsManager.showCertificate(window.quizEngine.lastPassedRecord || ${JSON.stringify(status.passedRecord).replace(/"/g, '&quot;')})" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow flex items-center gap-1.5 cursor-pointer">
-                <span>📜</span> Ver Mi Certificado SENA
+        errorEl.innerHTML = `
+          <div class="p-4 rounded-2xl ${
+            isPassed 
+              ? 'bg-emerald-500/10 border-2 border-emerald-500/40 text-emerald-900 dark:text-emerald-200' 
+              : 'bg-amber-500/10 border-2 border-amber-500/40 text-amber-900 dark:text-amber-200'
+          } text-left animate-fadeIn shadow-sm">
+            <div class="flex items-center gap-2.5 mb-2">
+              <span class="text-2xl">${isPassed ? '🎓' : '⚠️'}</span>
+              <div>
+                <h4 class="font-black text-sm text-slate-900 dark:text-white">Ya presentaste la prueba</h4>
+                <p class="text-xs opacity-90">El documento <strong>${documento}</strong> ya cuenta con una evaluación registrada en el sistema (${lastRec ? (lastRec.fecha || 'Previa') : ''}).</p>
+              </div>
+            </div>
+            <p class="text-xs mb-3 leading-relaxed">
+              ${isPassed 
+                ? `Resultado: <strong class="text-emerald-600 dark:text-emerald-400">APROBADO con ${status.bestScore}%</strong>. Tu certificación oficial está disponible.`
+                : `Resultado: <strong>Calificación obtenida: ${lastRec ? lastRec.porcentaje : 0}%</strong>.`}
+            </p>
+            <div class="flex flex-wrap items-center gap-2">
+              ${isPassed ? `
+                <button type="button" onclick="window.recordsManager.showCertificate(window.quizEngine.lastPassedRecord || ${JSON.stringify(status.passedRecord).replace(/"/g, '&quot;')})" class="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow flex items-center gap-1.5 cursor-pointer">
+                  <span>📜</span> Ver y Descargar Certificado SENA
+                </button>
+              ` : ''}
+              <button type="button" onclick="window.app.navigateTo('slides')" class="px-3.5 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition">
+                <span>📖</span> Ir a Diapositivas
               </button>
             </div>
-          `;
-        } else {
-          errorEl.innerHTML = `
-            <div class="p-3 text-left">
-              <p class="font-bold text-rose-700 dark:text-rose-300 mb-1">⛔ Límite de intentos alcanzado</p>
-              <p class="text-xs text-rose-600 dark:text-rose-400">Has agotado los <strong>2 intentos permitidos</strong> sin alcanzar el puntaje mínimo aprobatorio (70%). Según el reglamento académico SENA, no es posible presentar más intentos y no se genera certificado.</p>
-            </div>
-          `;
-        }
+          </div>
+        `;
         errorEl.classList.remove('hidden');
       } else {
-        alert('Has alcanzado el límite máximo de 2 intentos permitidos para esta evaluación.');
+        alert(`Ya presentaste la prueba con el documento ${documento}.`);
+      }
+
+      if (startBtn) {
+        startBtn.disabled = true;
+        startBtn.classList.add('opacity-50', 'cursor-not-allowed', 'grayscale');
+        startBtn.innerHTML = '<span>🔒 Ya Presentaste la Prueba</span>';
       }
       return false;
     }
@@ -754,18 +882,16 @@ class QuizEngine {
             <div class="flex items-center gap-2">
               <span class="text-2xl">✅</span>
               <div>
-                <strong class="text-sm block">¡Competencia Laboral Aprobada!</strong>
-                <span class="text-xs opacity-90">Tu constancia digital oficial está lista para descargar e imprimir.</span>
+                <strong class="text-sm block">¡Competencia Laboral Aprobada y Certificada!</strong>
+                <span class="text-xs opacity-90">Has completado y superado satisfactoriamente la evaluación. Tu constancia oficial digital está lista para descargar e imprimir.</span>
               </div>
             </div>
-            ${hasRemainingAttempt ? `
-              <button 
-                onclick="window.quizEngine.restartQuiz()" 
-                class="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition shadow"
-              >
-                Presentar 2do Intento (Opcional para subir nota)
-              </button>
-            ` : ''}
+            <button 
+              onclick="window.recordsManager.showCertificate(window.currentEvaluationResult)"
+              class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow flex items-center gap-1.5 cursor-pointer transition"
+            >
+              <span>📜</span> Ver Certificado
+            </button>
           </div>
         ` : hasRemainingAttempt ? `
           <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 flex items-center justify-between gap-4 flex-wrap">
@@ -878,6 +1004,18 @@ class QuizEngine {
     const setupView = document.getElementById('quiz-setup-view');
     const runningView = document.getElementById('quiz-running-view');
     const resultsView = document.getElementById('quiz-results-view');
+    const errorEl = document.getElementById('quiz-setup-error');
+    const startBtn = document.getElementById('btn-start-quiz');
+
+    if (errorEl) {
+      errorEl.classList.add('hidden');
+      errorEl.innerHTML = '';
+    }
+    if (startBtn) {
+      startBtn.disabled = false;
+      startBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'grayscale');
+      startBtn.innerHTML = '<span>🚀 Iniciar Cuestionario Oficial</span>';
+    }
 
     if (resultsView) resultsView.classList.add('hidden');
     if (runningView) runningView.classList.add('hidden');
