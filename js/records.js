@@ -31,7 +31,7 @@ class RecordsManager {
 
     try {
       const result = await window.SupabaseManager.fetchEvaluations();
-      this.records = result.records || [];
+      this.records = this.consolidateApprenticeRecords(result.records || []);
       this.currentSource = result.source;
 
       if (badgeElem) {
@@ -50,6 +50,69 @@ class RecordsManager {
     } catch (e) {
       console.error('Error cargando registros:', e);
     }
+  }
+
+  // Consolidar registros por aprendiz: eliminar duplicados, sólo publicar aprobados o resultados tras 2° intento
+  consolidateApprenticeRecords(recordsList) {
+    if (!Array.isArray(recordsList)) return [];
+
+    const groups = new Map();
+
+    for (const r of recordsList) {
+      const cleanDoc = r.documento ? String(r.documento).replace(/\D/g, '') : '';
+      const cleanName = (r.nombre || '').toLowerCase().trim();
+      const cleanFicha = String(r.ficha || '').trim();
+      const key = cleanDoc && cleanDoc.length >= 4 ? `doc_${cleanDoc}` : `name_${cleanName}_${cleanFicha}`;
+
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(r);
+    }
+
+    const consolidated = [];
+    const obsoleteIdsToDelete = [];
+
+    for (const [key, attempts] of groups.entries()) {
+      // Ordenar intentos por fecha descendente (más recientes primero)
+      attempts.sort((a, b) => new Date(b.fechaISO || b.fecha || 0) - new Date(a.fechaISO || a.fecha || 0));
+
+      const passedAttempt = attempts.find(a => a.aprobado);
+
+      if (passedAttempt) {
+        // Regla SENA: Si aprobó (sea en intento 1 o 2), SÓLO se publica el aprobado
+        if (attempts.length > 1) {
+          passedAttempt.intento = 2;
+        }
+        consolidated.push(passedAttempt);
+
+        // Limpiar en base de datos cualquier intento reprobado previo de este aprendiz
+        attempts.filter(a => !a.aprobado).forEach(a => {
+          if (a.id && a.id !== passedAttempt.id) obsoleteIdsToDelete.push(a.id);
+        });
+      } else {
+        // Si no aprobó: sólo se publica después de que pase el 2° intento
+        if (attempts.length >= 2 || attempts.some(a => Number(a.intento) >= 2)) {
+          const finalAttempt = attempts[0];
+          finalAttempt.intento = 2;
+          consolidated.push(finalAttempt);
+
+          // Mantener sólo el intento definitivo
+          attempts.slice(1).forEach(a => {
+            if (a.id && a.id !== finalAttempt.id) obsoleteIdsToDelete.push(a.id);
+          });
+        }
+        // Si sólo tiene 1 intento reprobado, aún no se publica hasta que complete su 2do intento
+      }
+    }
+
+    // Limpieza automática en segundo plano de registros duplicados en Supabase y LocalStorage
+    if (obsoleteIdsToDelete.length > 0 && window.SupabaseManager) {
+      obsoleteIdsToDelete.forEach(id => {
+        window.SupabaseManager.deleteEvaluation(id).catch(e => console.warn('Limpiando duplicado:', e));
+      });
+    }
+
+    consolidated.sort((a, b) => new Date(b.fechaISO || b.fecha || 0) - new Date(a.fechaISO || a.fecha || 0));
+    return consolidated;
   }
 
   populateFichaDropdown() {
