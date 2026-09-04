@@ -12,6 +12,7 @@ class AuthManager {
     
     // PINs predeterminados autorizados
     this.defaultPins = {
+      '1010': { role: 'Instructor del Área', icon: '👨‍🏫' },
       '2026': { role: 'Coordinador Académico', icon: '👔' },
       '1234': { role: 'Coordinador de Formación', icon: '📋' },
       '7788': { role: 'Administrador General', icon: '👑' },

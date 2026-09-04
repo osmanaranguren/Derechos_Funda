@@ -737,6 +737,7 @@ class QuizEngine {
       totalPreguntas: total,
       porcentaje: porcentaje,
       aprobado: aprobado,
+      calificado_sofia: false,
       tiempo: tiempoEmpleado,
       fecha: new Date().toLocaleString('es-CO'),
       fechaISO: new Date().toISOString(),
@@ -872,6 +873,12 @@ class QuizEngine {
         <div>
           <span class="text-xs font-bold text-slate-400 uppercase">Fecha de Realización:</span>
           <p class="text-sm font-semibold text-slate-600 dark:text-slate-300">${record.fecha}</p>
+        </div>
+        <div>
+          <span class="text-xs font-bold text-slate-400 uppercase">Estado en SOFIA PLUS:</span>
+          <p class="text-sm font-semibold flex items-center gap-1.5 ${record.calificado_sofia ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}">
+            <span>${record.calificado_sofia ? '✅ Calificado' : '⏳ Pendiente por Instructor'}</span>
+          </p>
         </div>
       </div>
 

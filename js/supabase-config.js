@@ -179,7 +179,8 @@ const SupabaseManager = {
             porcentaje: Number(record.porcentaje),
             aprobado: Boolean(record.aprobado),
             tiempo_empleado: record.tiempo || '',
-            respuestas_detalle: record.respuestas || []
+            respuestas_detalle: record.respuestas || [],
+            calificado_sofia: Boolean(record.calificado_sofia)
           };
 
           // Solo enviar id si es un UUID válido de Postgres; de lo contrario gen_random_uuid() lo genera
@@ -192,10 +193,11 @@ const SupabaseManager = {
             .insert([payload])
             .select();
 
-          // Resiliencia: Si la tabla de Supabase aún no tiene la columna 'intento', reintentar sin ese campo
-          if (error && (error.message.includes('intento') || error.code === '42703')) {
+          // Resiliencia: Si la tabla de Supabase aún no tiene columnas añadidas (intento, calificado_sofia), reintentar
+          if (error && (error.message.includes('intento') || error.message.includes('calificado_sofia') || error.code === '42703')) {
             const fallbackPayload = { ...payload };
-            delete fallbackPayload.intento;
+            if (error.message.includes('intento') || error.code === '42703') delete fallbackPayload.intento;
+            if (error.message.includes('calificado_sofia') || error.code === '42703') delete fallbackPayload.calificado_sofia;
             const retry = await this.client.from(this.tableName).insert([fallbackPayload]).select();
             data = retry.data;
             error = retry.error;
@@ -266,6 +268,9 @@ const SupabaseManager = {
               fecha: new Date(item.created_at).toLocaleString('es-CO'),
               fechaISO: item.created_at,
               respuestas: item.respuestas_detalle,
+              calificado_sofia: Boolean(item.calificado_sofia),
+              calificado_sofia_por: item.calificado_sofia_por || '',
+              calificado_sofia_fecha: item.calificado_sofia_fecha || '',
               origen: 'supabase'
             }));
 
@@ -317,6 +322,81 @@ const SupabaseManager = {
     }
 
     return { success: true, source: 'local' };
+  },
+
+  // Actualizar estado de calificación en SOFIA PLUS (Supabase y LocalStorage con instructor que lo firma)
+  async updateEvaluationSofiaStatus(recordId, isCalificado, instructorName = '', fecha = '') {
+    if (!recordId) return { success: false, message: 'ID no proporcionado' };
+
+    const author = isCalificado ? (instructorName || 'Instructor del Área') : '';
+    const dateStr = isCalificado ? (fecha || new Date().toLocaleString('es-CO')) : '';
+
+    // 1. Actualizar siempre en LocalStorage (datos primarios y caché)
+    this.updateLocalRecordSofiaStatus(recordId, isCalificado, author, dateStr);
+
+    // 2. Si Supabase está configurado, actualizar en la nube
+    if (this.isConfigured()) {
+      this.initClient();
+      if (this.client) {
+        try {
+          const updatePayload = {
+            calificado_sofia: Boolean(isCalificado)
+          };
+
+          let { error } = await this.client
+            .from(this.tableName)
+            .update(updatePayload)
+            .eq('id', recordId);
+
+          if (error) {
+            console.warn('Advertencia al actualizar calificado_sofia en Supabase:', error);
+            return { success: false, source: 'local_only', error: error.message };
+          }
+
+          return { success: true, source: 'supabase' };
+        } catch (err) {
+          console.warn('Fallo de red al actualizar calificado_sofia en Supabase:', err);
+          return { success: false, source: 'local_only', error: err.message };
+        }
+      }
+    }
+
+    return { success: true, source: 'local' };
+  },
+
+  updateLocalRecordSofiaStatus(recordId, isCalificado, author = '', dateStr = '') {
+    try {
+      // Actualizar datos locales primarios
+      let list = this.getLocalRecords();
+      list = list.map(r => {
+        if (String(r.id) === String(recordId)) {
+          r.calificado_sofia = Boolean(isCalificado);
+          r.calificado_sofia_por = isCalificado ? author : '';
+          r.calificado_sofia_fecha = isCalificado ? dateStr : '';
+        }
+        return r;
+      });
+      localStorage.setItem('SENA_EVALUACIONES_DATA', JSON.stringify(list));
+
+      // Actualizar también en caché de Supabase
+      const cacheRaw = localStorage.getItem('SENA_EVALUACIONES_CACHE');
+      if (cacheRaw) {
+        let cacheList = JSON.parse(cacheRaw);
+        if (Array.isArray(cacheList)) {
+          cacheList = cacheList.map(r => {
+            if (String(r.id) === String(recordId)) {
+              r.calificado_sofia = Boolean(isCalificado);
+              r.calificado_sofia_por = isCalificado ? author : '';
+              r.calificado_sofia_fecha = isCalificado ? dateStr : '';
+            }
+            return r;
+          });
+          localStorage.setItem('SENA_EVALUACIONES_CACHE', JSON.stringify(cacheList));
+        }
+      }
+    } catch (e) {
+      console.error('Error actualizando calificado_sofia en LocalStorage:', e);
+    }
   },
 
   // Manejo de LocalStorage
@@ -371,10 +451,12 @@ CREATE TABLE IF NOT EXISTS public.evaluaciones_sena (
     nombre TEXT NOT NULL,
     documento TEXT,
     ficha TEXT NOT NULL,
+    intento INTEGER DEFAULT 1,
     puntaje INTEGER NOT NULL,
     total_preguntas INTEGER NOT NULL DEFAULT 10,
     porcentaje NUMERIC(5,2) NOT NULL,
     aprobado BOOLEAN NOT NULL,
+    calificado_sofia BOOLEAN DEFAULT FALSE,
     tiempo_empleado TEXT,
     respuestas_detalle JSONB
 );
@@ -403,9 +485,21 @@ FOR DELETE
 TO anon, authenticated 
 USING (true);
 
--- 6. Crear índices para búsquedas rápidas por ficha y fecha
+-- 6. Crear política para permitir actualización (ej: calificado_sofia)
+CREATE POLICY "Permitir actualizacion anonima" 
+ON public.evaluaciones_sena 
+FOR UPDATE 
+TO anon, authenticated 
+USING (true)
+WITH CHECK (true);
+
+-- 7. Crear índices para búsquedas rápidas por ficha y fecha
 CREATE INDEX IF NOT EXISTS idx_evaluaciones_ficha ON public.evaluaciones_sena (ficha);
 CREATE INDEX IF NOT EXISTS idx_evaluaciones_fecha ON public.evaluaciones_sena (created_at DESC);
+
+-- 8. Migración para tablas existentes que no tengan la columna calificado_sofia o intento:
+ALTER TABLE public.evaluaciones_sena ADD COLUMN IF NOT EXISTS intento INTEGER DEFAULT 1;
+ALTER TABLE public.evaluaciones_sena ADD COLUMN IF NOT EXISTS calificado_sofia BOOLEAN DEFAULT FALSE;
 `;
   }
 };

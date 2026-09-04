@@ -577,7 +577,7 @@
       </div>
 
       <!-- Widgets de Métricas Rápidas -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         <div class="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
           <span class="text-xs font-bold text-slate-400 uppercase">Evaluaciones</span>
           <p id="stat-total-evaluaciones" class="text-3xl font-black text-slate-900 dark:text-white mt-1">0</p>
@@ -586,6 +586,11 @@
         <div class="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
           <span class="text-xs font-bold text-slate-400 uppercase">Aprobados</span>
           <p id="stat-total-aprobados" class="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-1">0</p>
+        </div>
+
+        <div class="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+          <span class="text-xs font-bold text-slate-400 uppercase">Calificados SOFIA</span>
+          <p id="stat-total-sofia" class="text-3xl font-black text-amber-600 dark:text-amber-400 mt-1">0</p>
         </div>
 
         <div class="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
@@ -608,6 +613,14 @@
           <select id="records-filter-ficha" onchange="window.recordsManager.setFichaFilter(this.value)"
             class="px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-white focus:outline-none">
             <option value="ALL">Todas las Fichas</option>
+          </select>
+
+          <!-- Filtro SOFIA PLUS -->
+          <select id="records-filter-sofia" onchange="window.recordsManager.setSofiaFilter(this.value)"
+            class="px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-white focus:outline-none">
+            <option value="ALL">Todos en SOFIA</option>
+            <option value="CALIFICADO">✓ Calificados en SOFIA</option>
+            <option value="PENDIENTE">⏳ Pendientes en SOFIA</option>
           </select>
 
           <!-- Input de Búsqueda -->
@@ -644,6 +657,7 @@
               <th class="py-3.5 px-4 text-center">Puntaje</th>
               <th class="py-3.5 px-4 text-center">Estado</th>
               <th class="py-3.5 px-4">Fecha / Tiempo</th>
+              <th class="py-3.5 px-4 text-center">SOFIA PLUS</th>
               <th class="py-3.5 px-4 text-right">Acciones</th>
             </tr>
           </thead>
@@ -933,15 +947,15 @@
   </footer>
 
   <!-- Scripts del Proyecto con Cache Busting -->
-  <script src="js/data.js?v=4.0"></script>
-  <script src="js/audio.js?v=4.0"></script>
-  <script src="js/confetti.js?v=4.0"></script>
-  <script src="js/auth.js?v=4.0"></script>
-  <script src="js/supabase-credentials.js?v=4.0"></script>
-  <script src="js/supabase-config.js?v=4.0"></script>
-  <script src="js/quiz.js?v=4.0"></script>
-  <script src="js/records.js?v=4.0"></script>
-  <script src="js/app.js?v=4.0"></script>
+  <script src="js/data.js?v=5.1"></script>
+  <script src="js/audio.js?v=5.1"></script>
+  <script src="js/confetti.js?v=5.1"></script>
+  <script src="js/auth.js?v=5.1"></script>
+  <script src="js/supabase-credentials.js?v=5.1"></script>
+  <script src="js/supabase-config.js?v=5.1"></script>
+  <script src="js/quiz.js?v=5.1"></script>
+  <script src="js/records.js?v=5.1"></script>
+  <script src="js/app.js?v=5.1"></script>
 </body>
 
 </html>

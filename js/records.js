@@ -8,6 +8,7 @@ class RecordsManager {
     this.records = [];
     this.filteredRecords = [];
     this.currentFilterFicha = 'ALL';
+    this.currentFilterSofia = 'ALL';
     this.currentSearch = '';
     this.currentSource = 'local';
   }
@@ -19,7 +20,7 @@ class RecordsManager {
     if (listElem) {
       listElem.innerHTML = `
         <tr>
-          <td colspan="7" class="text-center py-8 text-slate-500">
+          <td colspan="9" class="text-center py-8 text-slate-500">
             <div class="inline-flex items-center gap-2">
               <span class="animate-spin text-xl">⏳</span> Cargando evaluaciones...
             </div>
@@ -76,6 +77,11 @@ class RecordsManager {
     this.applyFilters();
   }
 
+  setSofiaFilter(sofiaFilter) {
+    this.currentFilterSofia = sofiaFilter || 'ALL';
+    this.applyFilters();
+  }
+
   setSearchFilter(term) {
     this.currentSearch = (term || '').toLowerCase().trim();
     this.applyFilters();
@@ -88,8 +94,11 @@ class RecordsManager {
         (r.nombre && r.nombre.toLowerCase().includes(this.currentSearch)) ||
         (r.documento && r.documento.toLowerCase().includes(this.currentSearch)) ||
         (r.ficha && String(r.ficha).includes(this.currentSearch));
+      const matchSofia = this.currentFilterSofia === 'ALL' ||
+        (this.currentFilterSofia === 'CALIFICADO' && !!r.calificado_sofia) ||
+        (this.currentFilterSofia === 'PENDIENTE' && !r.calificado_sofia);
 
-      return matchFicha && matchSearch;
+      return matchFicha && matchSearch && matchSofia;
     });
 
     this.renderTable();
@@ -99,17 +108,20 @@ class RecordsManager {
   updateStats() {
     const totalElem = document.getElementById('stat-total-evaluaciones');
     const aprobadosElem = document.getElementById('stat-total-aprobados');
+    const sofiaElem = document.getElementById('stat-total-sofia');
     const promedioElem = document.getElementById('stat-promedio-porcentaje');
     const tasaElem = document.getElementById('stat-tasa-aprobacion');
 
     const total = this.filteredRecords.length;
     const aprobados = this.filteredRecords.filter(r => r.aprobado).length;
+    const totalSofia = this.filteredRecords.filter(r => r.calificado_sofia).length;
     const sumaPorcentajes = this.filteredRecords.reduce((acc, r) => acc + (Number(r.porcentaje) || 0), 0);
     const promedio = total > 0 ? Math.round(sumaPorcentajes / total) : 0;
     const tasa = total > 0 ? Math.round((aprobados / total) * 100) : 0;
 
     if (totalElem) totalElem.textContent = total;
     if (aprobadosElem) aprobadosElem.textContent = `${aprobados} / ${total}`;
+    if (sofiaElem) sofiaElem.textContent = `${totalSofia} / ${total}`;
     if (promedioElem) promedioElem.textContent = `${promedio}%`;
     if (tasaElem) tasaElem.textContent = `${tasa}%`;
   }
@@ -121,7 +133,7 @@ class RecordsManager {
     if (this.filteredRecords.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="8" class="text-center py-12 text-slate-400">
+          <td colspan="9" class="text-center py-12 text-slate-400">
             <div class="flex flex-col items-center justify-center gap-2">
               <span class="text-3xl">📋</span>
               <p class="font-medium text-sm">No se encontraron evaluaciones registradas con los filtros actuales.</p>
@@ -169,6 +181,29 @@ class RecordsManager {
           <div>${r.fecha || 'Reciente'}</div>
           ${r.tiempo ? `<div class="text-slate-400 font-mono">⏱ ${r.tiempo}</div>` : ''}
         </td>
+        <td class="py-3.5 px-4 text-center">
+          <div class="inline-flex flex-col items-center justify-center gap-1">
+            <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer select-none ${
+              r.calificado_sofia 
+                ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 shadow-sm' 
+                : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+            }" title="${r.calificado_sofia ? `Calificado por: ${r.calificado_sofia_por || 'Instructor'}. Clic para desmarcar.` : 'Clic para marcar como calificado en SOFIA PLUS'}">
+              <input 
+                type="checkbox" 
+                class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer accent-emerald-600"
+                ${r.calificado_sofia ? 'checked' : ''} 
+                onchange="window.recordsManager.toggleSofiaStatus('${r.id}')"
+              />
+              <span>${r.calificado_sofia ? 'Calificado' : 'Sin calificar'}</span>
+            </label>
+            ${r.calificado_sofia && r.calificado_sofia_por ? `
+              <div class="text-[10px] text-slate-500 dark:text-slate-400 font-medium text-center leading-tight">
+                <span>👤 ${r.calificado_sofia_por}</span>
+                ${r.calificado_sofia_fecha ? `<div class="text-[9px] text-slate-400 font-mono">${r.calificado_sofia_fecha}</div>` : ''}
+              </div>
+            ` : ''}
+          </div>
+        </td>
         <td class="py-3.5 px-4 text-right">
           <div class="inline-flex items-center gap-1.5 justify-end">
             ${r.aprobado ? `
@@ -198,6 +233,59 @@ class RecordsManager {
         </td>
       </tr>
     `).join('');
+  }
+
+  // Alternar estado de calificación en SOFIA PLUS (registrado por el instructor autenticado)
+  async toggleSofiaStatus(id) {
+    const record = this.records.find(r => String(r.id) === String(id));
+    if (!record) return;
+
+    // Verificar si el instructor está autenticado
+    if (!window.authManager || !window.authManager.isAuthenticated()) {
+      if (window.app && window.app.showToast) {
+        window.app.showToast('🔒 Debes iniciar sesión como Instructor o Coordinador para calificar.', 'warning');
+      }
+      if (window.authManager) window.authManager.openAuthModal('records');
+      this.renderTable();
+      return;
+    }
+
+    const currentUser = window.authManager.getCurrentUser();
+    const instructorName = currentUser ? (currentUser.role || 'Instructor del Área') : 'Instructor del Área';
+    const fechaActual = new Date().toLocaleString('es-CO');
+
+    const newStatus = !record.calificado_sofia;
+    record.calificado_sofia = newStatus;
+    record.calificado_sofia_por = newStatus ? instructorName : '';
+    record.calificado_sofia_fecha = newStatus ? fechaActual : '';
+
+    // Actualizar también en lista filtrada
+    const filtered = this.filteredRecords.find(r => String(r.id) === String(id));
+    if (filtered) {
+      filtered.calificado_sofia = newStatus;
+      filtered.calificado_sofia_por = record.calificado_sofia_por;
+      filtered.calificado_sofia_fecha = record.calificado_sofia_fecha;
+    }
+
+    this.renderTable();
+    this.updateStats();
+
+    if (window.soundEngine) window.soundEngine.playClick();
+
+    try {
+      const res = await window.SupabaseManager.updateEvaluationSofiaStatus(id, newStatus, instructorName, fechaActual);
+      if (window.app && window.app.showToast) {
+        if (res && !res.success && res.error) {
+          window.app.showToast(`⚠️ Guardado local. Supabase rechazó (falta política UPDATE): ${res.error}`, 'warning');
+        } else if (newStatus) {
+          window.app.showToast(`✅ ${record.nombre}: Guardado en Supabase (Calificado por ${instructorName})`, 'success');
+        } else {
+          window.app.showToast(`⏳ ${record.nombre}: Guardado en Supabase (Sin calificar)`, 'info');
+        }
+      }
+    } catch (e) {
+      console.error('Error al actualizar estado en SOFIA:', e);
+    }
   }
 
   async deleteRecord(id, apprenticeName) {
@@ -305,7 +393,7 @@ class RecordsManager {
           ${record.nombre}
         </h2>
 
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-xl mx-auto p-4 rounded-2xl bg-white/70 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 mb-8 text-xs">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-xl mx-auto p-4 rounded-2xl bg-white/70 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 mb-6 text-xs">
           <div>
             <span class="text-slate-400 font-bold block uppercase text-[10px]">No. de Ficha:</span>
             <strong class="text-slate-800 dark:text-white text-sm font-mono">${record.ficha}</strong>
@@ -324,6 +412,15 @@ class RecordsManager {
             <span class="text-slate-400 font-bold block uppercase text-[10px]">Calificación:</span>
             <strong class="text-emerald-600 dark:text-emerald-400 text-sm font-bold">${record.porcentaje}% (${record.puntaje}/${record.totalPreguntas || 10})</strong>
           </div>
+        </div>
+
+        <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-semibold mb-6 border ${
+          record.calificado_sofia 
+            ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30' 
+            : 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30'
+        }">
+          <span>${record.calificado_sofia ? '✅' : '⏳'}</span>
+          <span>SOFIA PLUS: <strong>${record.calificado_sofia ? 'Calificado en Sistema' : 'Pendiente de Registro'}</strong></span>
         </div>
 
         <p class="text-xs md:text-sm text-slate-600 dark:text-slate-300 max-w-xl mx-auto leading-relaxed mb-10">
@@ -372,7 +469,7 @@ class RecordsManager {
       return;
     }
 
-    const headers = ['ID', 'Nombre Aprendiz', 'Documento', 'No. Ficha', 'Intento', 'Puntaje', 'Total Preguntas', 'Porcentaje', 'Estado', 'Tiempo', 'Fecha'];
+    const headers = ['ID', 'Nombre Aprendiz', 'Documento', 'No. Ficha', 'Intento', 'Puntaje', 'Total Preguntas', 'Porcentaje', 'Estado', 'Calificado SOFIA PLUS', 'Calificado Por', 'Fecha Calificación SOFIA', 'Tiempo', 'Fecha'];
     const rows = this.filteredRecords.map(r => [
       `"${r.id || ''}"`,
       `"${(r.nombre || '').replace(/"/g, '""')}"`,
@@ -383,6 +480,9 @@ class RecordsManager {
       r.totalPreguntas || 10,
       `${r.porcentaje}%`,
       r.aprobado ? 'Aprobado' : 'No Aprobado',
+      r.calificado_sofia ? 'SÍ' : 'NO',
+      `"${(r.calificado_sofia_por || '').replace(/"/g, '""')}"`,
+      `"${r.calificado_sofia_fecha || ''}"`,
       `"${r.tiempo || ''}"`,
       `"${r.fecha || ''}"`
     ]);
