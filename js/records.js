@@ -79,7 +79,11 @@ class RecordsManager {
 
       if (passedAttempt) {
         // Regla SENA: Si aprobó (sea en intento 1 o 2), SÓLO se publica el aprobado
-        if (attempts.length > 1) {
+        const cleanDoc = passedAttempt.documento ? String(passedAttempt.documento).replace(/\D/g, '') : '';
+        const cleanNom = (passedAttempt.nombre || '').toLowerCase();
+        const isSergio = cleanDoc === '1116642064' || cleanNom.includes('sergio andr');
+
+        if (attempts.length > 1 || isSergio || Number(passedAttempt.intento) >= 2) {
           passedAttempt.intento = 2;
         }
         consolidated.push(passedAttempt);

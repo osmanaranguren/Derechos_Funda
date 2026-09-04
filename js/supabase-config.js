@@ -168,6 +168,13 @@ const SupabaseManager = {
         try {
           const isUUID = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str);
 
+          // Asegurar preservación de metadato de intento en respuestas_detalle (compatible con Supabase JSONB)
+          let payloadRespuestas = Array.isArray(record.respuestas) ? [...record.respuestas] : [];
+          if (Array.isArray(payloadRespuestas)) {
+            payloadRespuestas = payloadRespuestas.filter(x => !x || !x._intento);
+            payloadRespuestas.unshift({ _intento: Number(record.intento || 1), _totalIntentos: 2 });
+          }
+
           const payload = {
             created_at: record.fechaISO || new Date().toISOString(),
             nombre: record.nombre,
@@ -179,7 +186,7 @@ const SupabaseManager = {
             porcentaje: Number(record.porcentaje),
             aprobado: Boolean(record.aprobado),
             tiempo_empleado: record.tiempo || '',
-            respuestas_detalle: record.respuestas || [],
+            respuestas_detalle: payloadRespuestas,
             calificado_sofia: Boolean(record.calificado_sofia)
           };
 
@@ -254,25 +261,46 @@ const SupabaseManager = {
             this.status = 'connected';
             this.updateStatusBadge();
 
-            const mapped = data.map(item => ({
-              id: item.id,
-              nombre: item.nombre,
-              documento: item.documento,
-              ficha: item.ficha,
-              intento: item.intento || 1,
-              puntaje: item.puntaje,
-              totalPreguntas: item.total_preguntas || 10,
-              porcentaje: Number(item.porcentaje),
-              aprobado: item.aprobado,
-              tiempo: item.tiempo_empleado,
-              fecha: new Date(item.created_at).toLocaleString('es-CO'),
-              fechaISO: item.created_at,
-              respuestas: item.respuestas_detalle,
-              calificado_sofia: Boolean(item.calificado_sofia),
-              calificado_sofia_por: item.calificado_sofia_por || '',
-              calificado_sofia_fecha: item.calificado_sofia_fecha || '',
-              origen: 'supabase'
-            }));
+            const mapped = data.map(item => {
+              // Recuperar número de intento (de columna SQL, o de metadata JSONB respuestas_detalle)
+              let intentoNum = item.intento;
+              if ((!intentoNum || intentoNum === 1) && Array.isArray(item.respuestas_detalle)) {
+                const meta = item.respuestas_detalle.find(x => x && x._intento);
+                if (meta) intentoNum = meta._intento;
+              }
+
+              // Normalizar aprendiz para caso especial confirmado: Sergio Andrés Merchán Álvarez
+              const cleanDoc = item.documento ? String(item.documento).replace(/\D/g, '') : '';
+              const cleanNom = (item.nombre || '').toLowerCase();
+              if (cleanDoc === '1116642064' || cleanNom.includes('sergio andr')) {
+                intentoNum = 2;
+              }
+
+              // Limpiar metadata de preguntas para no alterar la visualización
+              const cleanRespuestas = Array.isArray(item.respuestas_detalle) 
+                ? item.respuestas_detalle.filter(x => !x || !x._intento) 
+                : item.respuestas_detalle;
+
+              return {
+                id: item.id,
+                nombre: item.nombre,
+                documento: item.documento,
+                ficha: item.ficha,
+                intento: Number(intentoNum) || 1,
+                puntaje: item.puntaje,
+                totalPreguntas: item.total_preguntas || 10,
+                porcentaje: Number(item.porcentaje),
+                aprobado: item.aprobado,
+                tiempo: item.tiempo_empleado,
+                fecha: new Date(item.created_at).toLocaleString('es-CO'),
+                fechaISO: item.created_at,
+                respuestas: cleanRespuestas,
+                calificado_sofia: Boolean(item.calificado_sofia),
+                calificado_sofia_por: item.calificado_sofia_por || '',
+                calificado_sofia_fecha: item.calificado_sofia_fecha || '',
+                origen: 'supabase'
+              };
+            });
 
             // Respaldar en caché
             localStorage.setItem('SENA_EVALUACIONES_CACHE', JSON.stringify(mapped));
