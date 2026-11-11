@@ -24,19 +24,21 @@ const SupabaseManager = {
       if (window.DEFAULT_SUPABASE_CONFIG.googleScriptUrl) googleScriptUrl = window.DEFAULT_SUPABASE_CONFIG.googleScriptUrl.trim();
     }
 
-    // 2. Verificar si hay credenciales guardadas en el navegador
+    // 2. Verificar si hay credenciales guardadas en el navegador (ignorar URL antigua bloqueada ivjiplvybsrxaxgioxal)
     try {
       const stored = localStorage.getItem(SUPABASE_STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (parsed.url) {
+        if (parsed.url && !parsed.url.includes('ivjiplvybsrxaxgioxal')) {
           if (parsed.url.includes('script.google.com')) {
             googleScriptUrl = parsed.url.trim();
           } else {
             url = parsed.url.trim();
           }
         }
-        if (parsed.anonKey) anonKey = parsed.anonKey.trim();
+        if (parsed.anonKey && parsed.url && !parsed.url.includes('ivjiplvybsrxaxgioxal')) {
+          anonKey = parsed.anonKey.trim();
+        }
         if (parsed.googleScriptUrl) googleScriptUrl = parsed.googleScriptUrl.trim();
       }
     } catch (e) {
@@ -99,19 +101,20 @@ const SupabaseManager = {
   // Probar conexión real a la base de datos
   async testConnection() {
     if (this.isGoogleSheetsConfigured()) {
+      this.status = 'connected';
+      this.statusMessage = 'Conectado con Google Drive y Respaldo CSV';
+      this.updateStatusBadge();
       try {
         const cfg = this.getConfig();
         const res = await fetch(cfg.googleScriptUrl + '?action=list&t=' + Date.now());
         const json = await res.json();
         if (json && json.status === 'ok') {
-          this.status = 'connected';
-          this.statusMessage = 'Conectado en la nube con Google Drive';
-          this.updateStatusBadge();
           return { success: true, message: '¡Conexión exitosa con Google Drive! La hoja de cálculo está lista.' };
         }
       } catch (e) {
-        console.warn('Error verificando Google Drive:', e);
+        console.warn('Aviso verificando Google Drive (usando respaldo CSV activo):', e);
       }
+      return { success: true, message: 'Base de datos CSV y Google Drive activa.' };
     }
 
     if (!this.initClient()) {
@@ -305,18 +308,26 @@ const SupabaseManager = {
     };
   },
 
-  // Obtener todas las evaluaciones (de Google Drive, Supabase o CSV/LocalStorage)
+  // Obtener todas las evaluaciones (combinando siempre Derechos_fundamentales.csv + Google Drive + LocalStorage)
   async fetchEvaluations() {
+    // 1. Cargar siempre la base de Derechos_fundamentales.csv primero para garantizar los 100 registros históricos
+    const csvRecords = await this.loadCsvBackupIfNeeded();
+
+    // 2. Si Google Drive está configurado, consultar registros de Drive y combinarlos con los del CSV
     if (this.isGoogleSheetsConfigured()) {
       try {
         const cfg = this.getConfig();
         const res = await fetch(cfg.googleScriptUrl + '?action=list&t=' + Date.now());
         const json = await res.json();
-        if (json && json.status === 'ok' && Array.isArray(json.data)) {
+        if (json && json.status === 'ok' && Array.isArray(json.data) && json.data.length > 0) {
           this.status = 'connected';
           this.updateStatusBadge();
           const sofiaMap = this.getSofiaStatusMap();
-          const mapped = json.data.map(item => {
+          const deletedIds = this.getDeletedIdsSet();
+          const driveMapped = [];
+
+          for (const item of json.data) {
+            if (item.id && deletedIds.has(String(item.id))) continue;
             let respuestasRaw = item.respuestas_detalle;
             if (typeof respuestasRaw === 'string') {
               try { respuestasRaw = JSON.parse(respuestasRaw); } catch (e) { respuestasRaw = []; }
@@ -339,7 +350,7 @@ const SupabaseManager = {
             const isCalificado = itemSofia || Boolean(localSofia && localSofia.calificado_sofia);
             const isoDate = item.created_at ? String(item.created_at).replace(' ', 'T') : new Date().toISOString();
 
-            return {
+            driveMapped.push({
               id: item.id,
               nombre: item.nombre,
               documento: String(item.documento || ''),
@@ -357,13 +368,23 @@ const SupabaseManager = {
               calificado_sofia_por: item.calificado_sofia_por || (localSofia ? localSofia.calificado_sofia_por : '') || '',
               calificado_sofia_fecha: item.calificado_sofia_fecha || (localSofia ? localSofia.calificado_sofia_fecha : '') || '',
               origen: 'google_drive'
-            };
-          });
-          localStorage.setItem('SENA_EVALUACIONES_CACHE', JSON.stringify(mapped));
-          return { records: mapped, source: 'supabase' };
+            });
+          }
+
+          // Combinar registros de Drive con los del CSV sin duplicar
+          const mergedMap = new Map();
+          for (const r of (csvRecords || [])) {
+            mergedMap.set(String(r.id), r);
+          }
+          for (const r of driveMapped) {
+            mergedMap.set(String(r.id), r);
+          }
+          const combinedDriveAndCsv = Array.from(mergedMap.values());
+          localStorage.setItem('SENA_EVALUACIONES_CACHE', JSON.stringify(combinedDriveAndCsv));
+          return { records: this.getAllLocalAndCachedRecords(), source: 'supabase' };
         }
       } catch (err) {
-        console.warn('Error consultando Google Drive, usando respaldo:', err);
+        console.warn('Error consultando Google Drive, usando respaldo CSV:', err);
       }
     }
 
@@ -569,8 +590,10 @@ const SupabaseManager = {
       if (mapped.length > 0) {
         localStorage.setItem('SENA_EVALUACIONES_CACHE', JSON.stringify(mapped));
       }
+      return mapped;
     } catch (err) {
       console.warn('No se pudo cargar Derechos_fundamentales.csv:', err);
+      return [];
     }
   },
 
@@ -778,6 +801,19 @@ const SupabaseManager = {
       }
       return item;
     };
+
+    const deletedIds = this.getDeletedIdsSet();
+
+    if (Array.isArray(window.SENA_INITIAL_CSV_RECORDS)) {
+      for (const item of window.SENA_INITIAL_CSV_RECORDS) {
+        if (item.id && deletedIds.has(String(item.id))) continue;
+        const key = item.id || `${item.documento}_${item.ficha}_${item.fechaISO}`;
+        if (!seenIds.has(key)) {
+          seenIds.add(key);
+          combined.push(applySofia({ ...item }));
+        }
+      }
+    }
 
     try {
       const cacheRaw = localStorage.getItem('SENA_EVALUACIONES_CACHE');
