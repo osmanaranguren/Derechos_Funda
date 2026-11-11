@@ -31,8 +31,11 @@ class RecordsManager {
 
     try {
       const result = await window.SupabaseManager.fetchEvaluations();
-      this.records = this.consolidateApprenticeRecords(result.records || []);
-      this.currentSource = result.source;
+      const rawRecords = (result && Array.isArray(result.records) && result.records.length > 0)
+        ? result.records
+        : (window.SENA_INITIAL_CSV_RECORDS || []);
+      this.records = this.consolidateApprenticeRecords(rawRecords);
+      this.currentSource = (result && result.source) || 'csv';
 
       if (badgeElem) {
         if (this.currentSource === 'supabase') {

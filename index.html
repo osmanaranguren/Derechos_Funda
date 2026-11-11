@@ -89,14 +89,6 @@
 
         <!-- Botones de Acción Rápida -->
         <div class="flex items-center gap-2">
-          <!-- Botón Supabase con Estado en Vivo -->
-          <button id="navbar-supabase-status" onclick="window.app.openSupabaseModal()"
-            class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 transition border border-slate-200 dark:border-slate-700"
-            title="Configurar conexión con Supabase">
-            <span>⚡</span>
-            <span>Supabase</span>
-          </button>
-
           <!-- Botón Tema Oscuro/Claro -->
           <button onclick="window.app.toggleTheme()"
             class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 flex items-center justify-center text-sm transition border border-slate-200 dark:border-slate-700"
@@ -556,8 +548,7 @@
       <div class="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 class="text-2xl font-black text-slate-900 dark:text-white">Panel de Fichas y Calificaciones</h2>
-          <p class="text-xs text-slate-500 dark:text-slate-400">Historial completo de aprendices evaluados en Supabase y
-            almacenamiento local</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Historial completo de aprendices evaluados en Google Drive y base de datos oficial</p>
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
@@ -566,7 +557,7 @@
 
           <span id="records-source-badge"
             class="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 flex items-center gap-1">
-            🟢 Sincronizado
+            🟢 Conectado a Google Drive
           </span>
           <button onclick="window.recordsManager.loadRecords()"
             class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 transition border border-slate-200 dark:border-slate-700"
@@ -951,11 +942,11 @@
   <script src="js/audio.js?v=5.3"></script>
   <script src="js/confetti.js?v=5.3"></script>
   <script src="js/auth.js?v=5.3"></script>
-  <script src="js/supabase-credentials.js?v=5.8"></script>
-  <script src="js/supabase-config.js?v=5.8"></script>
-  <script src="js/quiz.js?v=5.8"></script>
-  <script src="js/records.js?v=5.8"></script>
-  <script src="js/app.js?v=5.8"></script>
+  <script src="js/supabase-credentials.js?v=5.9"></script>
+  <script src="js/supabase-config.js?v=5.9"></script>
+  <script src="js/quiz.js?v=5.9"></script>
+  <script src="js/records.js?v=5.9"></script>
+  <script src="js/app.js?v=5.9"></script>
 </body>
 
 </html>
