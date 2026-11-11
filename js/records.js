@@ -36,7 +36,11 @@ class RecordsManager {
 
       if (badgeElem) {
         if (this.currentSource === 'supabase') {
-          badgeElem.innerHTML = '🟢 Conectado a Supabase (En la nube)';
+          const isDrive = window.SupabaseManager && window.SupabaseManager.isGoogleSheetsConfigured();
+          badgeElem.innerHTML = isDrive ? '🟢 Conectado a Google Drive (En la nube)' : '🟢 Conectado a Supabase (En la nube)';
+          badgeElem.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5';
+        } else if (this.currentSource === 'csv') {
+          badgeElem.innerHTML = '📄 Base de Datos CSV Activa (Derechos_fundamentales.csv)';
           badgeElem.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5';
         } else {
           badgeElem.innerHTML = '💾 Modo Local (LocalStorage)';

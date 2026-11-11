@@ -7,7 +7,10 @@
  */
 
 window.DEFAULT_SUPABASE_CONFIG = {
-  // URL del proyecto Supabase
+  // URL de Google Apps Script (Base de datos en Google Drive / Google Sheets)
+  googleScriptUrl: 'https://script.google.com/macros/s/AKfycbwjGnUKYqFHeJSEQJMPPxj7NNfRtb3ZqSw5jaXW7_BgpMUhVxfmxRJoMzXzl1NJ7gEF/exec',
+
+  // URL del proyecto Supabase (Respaldo)
   url: 'https://ivjiplvybsrxaxgioxal.supabase.co',
 
   // Clave pública (publishable / anon key)
