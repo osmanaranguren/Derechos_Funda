@@ -11,6 +11,8 @@ class RecordsManager {
     this.currentFilterSofia = 'ALL';
     this.currentSearch = '';
     this.currentSource = 'local';
+    this.currentPage = 1;
+    this.pageSize = 10;
   }
 
   async loadRecords() {
@@ -148,17 +150,31 @@ class RecordsManager {
 
   setFichaFilter(ficha) {
     this.currentFilterFicha = ficha;
+    this.currentPage = 1;
     this.applyFilters();
   }
 
   setSofiaFilter(sofiaFilter) {
     this.currentFilterSofia = sofiaFilter || 'ALL';
+    this.currentPage = 1;
     this.applyFilters();
   }
 
   setSearchFilter(term) {
     this.currentSearch = (term || '').toLowerCase().trim();
+    this.currentPage = 1;
     this.applyFilters();
+  }
+
+  setPage(page) {
+    this.currentPage = Number(page) || 1;
+    this.renderTable();
+  }
+
+  setPageSize(size) {
+    this.pageSize = size === 'ALL' ? 'ALL' : (Number(size) || 10);
+    this.currentPage = 1;
+    this.renderTable();
   }
 
   applyFilters() {
@@ -202,9 +218,12 @@ class RecordsManager {
 
   renderTable() {
     const tbody = document.getElementById('records-table-body');
+    const paginationBar = document.getElementById('records-pagination-bar');
     if (!tbody) return;
 
-    if (this.filteredRecords.length === 0) {
+    const totalItems = this.filteredRecords.length;
+
+    if (totalItems === 0) {
       tbody.innerHTML = `
         <tr>
           <td colspan="9" class="text-center py-12 text-slate-400">
@@ -218,12 +237,22 @@ class RecordsManager {
           </td>
         </tr>
       `;
+      if (paginationBar) paginationBar.innerHTML = '';
       return;
     }
 
-    tbody.innerHTML = this.filteredRecords.map((r, i) => `
+    const effectivePageSize = this.pageSize === 'ALL' ? totalItems : (Number(this.pageSize) || 10);
+    const totalPages = Math.max(1, Math.ceil(totalItems / effectivePageSize));
+    if (this.currentPage > totalPages) this.currentPage = totalPages;
+    if (this.currentPage < 1) this.currentPage = 1;
+
+    const startIndex = this.pageSize === 'ALL' ? 0 : (this.currentPage - 1) * effectivePageSize;
+    const endIndex = this.pageSize === 'ALL' ? totalItems : Math.min(startIndex + effectivePageSize, totalItems);
+    const pageRecords = this.filteredRecords.slice(startIndex, endIndex);
+
+    tbody.innerHTML = pageRecords.map((r, i) => `
       <tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
-        <td class="py-3.5 px-4 font-mono text-xs text-slate-400 font-medium">${i + 1}</td>
+        <td class="py-3.5 px-4 font-mono text-xs text-slate-400 font-medium">${startIndex + i + 1}</td>
         <td class="py-3.5 px-4">
           <div class="font-bold text-slate-800 dark:text-white text-sm">${r.nombre}</div>
           ${r.documento ? `<div class="text-xs text-slate-400 font-mono">ID: ${r.documento}</div>` : ''}
@@ -307,6 +336,61 @@ class RecordsManager {
         </td>
       </tr>
     `).join('');
+
+    this.renderPagination(totalItems, totalPages, startIndex, endIndex);
+  }
+
+  renderPagination(totalItems, totalPages, startIndex, endIndex) {
+    const paginationBar = document.getElementById('records-pagination-bar');
+    if (!paginationBar) return;
+
+    const pages = [];
+    for (let p = 1; p <= totalPages; p++) {
+      pages.push(p);
+    }
+
+    paginationBar.innerHTML = `
+      <div class="flex flex-wrap items-center gap-3 text-slate-500 dark:text-slate-400">
+        <span>
+          Mostrando <strong class="text-slate-800 dark:text-white">${startIndex + 1}–${endIndex}</strong> de <strong class="text-slate-800 dark:text-white">${totalItems}</strong> registros
+        </span>
+        <div class="flex items-center gap-1.5">
+          <span>Filas por página:</span>
+          <select onchange="window.recordsManager.setPageSize(this.value)"
+            class="px-2 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-slate-700 dark:text-slate-200 focus:outline-none">
+            <option value="10" ${this.pageSize === 10 ? 'selected' : ''}>10</option>
+            <option value="20" ${this.pageSize === 20 ? 'selected' : ''}>20</option>
+            <option value="50" ${this.pageSize === 50 ? 'selected' : ''}>50</option>
+            <option value="ALL" ${this.pageSize === 'ALL' ? 'selected' : ''}>Todos</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-1.5">
+        <button onclick="window.recordsManager.setPage(${this.currentPage - 1})"
+          ${this.currentPage <= 1 ? 'disabled' : ''}
+          class="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition">
+          « Anterior
+        </button>
+
+        ${pages.map(p => `
+          <button onclick="window.recordsManager.setPage(${p})"
+            class="w-8 h-8 rounded-lg font-bold transition flex items-center justify-center ${
+              p === this.currentPage
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+            }">
+            ${p}
+          </button>
+        `).join('')}
+
+        <button onclick="window.recordsManager.setPage(${this.currentPage + 1})"
+          ${this.currentPage >= totalPages ? 'disabled' : ''}
+          class="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition">
+          Siguiente »
+        </button>
+      </div>
+    `;
   }
 
   // Alternar estado de calificación en SOFIA PLUS (registrado por el instructor autenticado)
